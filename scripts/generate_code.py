@@ -1,4 +1,4 @@
-import os
+ import os
 import sys
 import openai
 import requests
@@ -52,6 +52,7 @@ def fetch_blurb():
     raise Exception("❌ No matching blurb found.")
 
 def generate_code():
+    print("🧠 Generating code using OpenAI GPT...")
     with open("blurb.txt") as f:
         prompt = f.read()
 
@@ -71,6 +72,7 @@ def generate_code():
     print("✅ Code written to generated/add.cs")
 
 def compile_code():
+    print("⚙️ Compiling generated C# code...")
     os.makedirs("project", exist_ok=True)
     os.chdir("project")
     os.system("dotnet new classlib -n CodeGen")
@@ -90,4 +92,3 @@ if __name__ == "__main__":
         generate_code()
     elif action == "compile":
         compile_code()
-
