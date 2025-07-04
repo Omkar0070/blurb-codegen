@@ -20,8 +20,13 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
       - name: Install dependencies
-        run: pip install openai PyGithub
+        run: pip install openai requests
 
       - name: Run blurb pipeline
         run: |
@@ -46,3 +51,4 @@ jobs:
           title: "Codegen PR from Discussion"
           commit-message: "Add generated code"
           base: main
+
