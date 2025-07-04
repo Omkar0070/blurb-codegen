@@ -42,8 +42,9 @@ def fetch_blurb():
     data = response.json()
     discussions = data["data"]["repository"]["discussions"]["nodes"]
 
-    for d in discussions:
-        if d["category"]["name"] == DISCUSSION_CATEGORY and "🟢" in d["title"]:
+    for d in discussions: if d["category"]["name"] == DISCUSSION_CATEGORY:
+        #if d["category"]["name"] == DISCUSSION_CATEGORY and "🟢" in d["title"]:
+        if d["category"]["name"] == DISCUSSION_CATEGORY:
             with open("blurb.txt", "w") as f:
                 f.write(d["body"])
             print(f"✅ Found blurb: {d['title']}")
