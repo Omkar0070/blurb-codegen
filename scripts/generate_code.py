@@ -1,22 +1,55 @@
 import os
 import sys
-from github import Github
 import openai
+import requests
 
 REPO = os.getenv("GITHUB_REPOSITORY")
+OWNER, NAME = REPO.split("/")
 DISCUSSION_CATEGORY = "Blurb"
 
 def fetch_blurb():
-    g = Github(os.environ["GITHUB_TOKEN"])
-    repo = g.get_repo(REPO)
-    discussions = repo.get_discussions()
+    print("🔍 Fetching discussion blurb from GitHub GraphQL...")
+
+    query = f"""
+    {{
+      repository(owner: "{OWNER}", name: "{NAME}") {{
+        discussions(first: 10, orderBy: {{field: CREATED_AT, direction: DESC}}) {{
+          nodes {{
+            title
+            body
+            number
+            category {{
+              name
+            }}
+          }}
+        }}
+      }}
+    }}
+    """
+    headers = {
+        "Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}"
+    }
+
+    response = requests.post(
+        "https://api.github.com/graphql",
+        json={"query": query},
+        headers=headers
+    )
+
+    if response.status_code != 200:
+        raise Exception(f"❌ GraphQL query failed: {response.status_code} - {response.text}")
+
+    data = response.json()
+    discussions = data["data"]["repository"]["discussions"]["nodes"]
+
     for d in discussions:
-        if d.category.name == DISCUSSION_CATEGORY and "🟢" in d.title:
+        if d["category"]["name"] == DISCUSSION_CATEGORY and "🟢" in d["title"]:
             with open("blurb.txt", "w") as f:
-                f.write(d.body)
-            print("✅ Blurb found:", d.title)
+                f.write(d["body"])
+            print(f"✅ Found blurb: {d['title']}")
             return
-    raise Exception("❌ No blurb found.")
+
+    raise Exception("❌ No matching blurb found.")
 
 def generate_code():
     with open("blurb.txt") as f:
