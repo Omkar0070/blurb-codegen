@@ -1,7 +1,8 @@
+
 import os
 import sys
 import requests
-from openai import OpenAI
+import google.generativeai as genai
 
 REPO = os.getenv("GITHUB_REPOSITORY")
 OWNER, NAME = REPO.split("/")
@@ -54,22 +55,16 @@ def fetch_blurb():
     raise Exception("❌ No matching blurb found.")
 
 def generate_code():
-    print("🧠 Generating code using OpenAI GPT...")
+    print("🧠 Generating code using Gemini...")
     with open("blurb.txt") as f:
         prompt = f.read()
 
-    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": "You generate clean and functional code."},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.2
-    )
+    model = genai.GenerativeModel("gemini-1.5-flash-latest")
+    response = model.generate_content(prompt)
 
-    code = response.choices[0].message.content
+    code = response.text
 
     os.makedirs("generated", exist_ok=True)
     with open("generated/add.cs", "w") as f:
