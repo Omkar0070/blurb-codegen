@@ -1,7 +1,7 @@
 import os
 import sys
-import openai
 import requests
+from openai import OpenAI
 
 REPO = os.getenv("GITHUB_REPOSITORY")
 OWNER, NAME = REPO.split("/")
@@ -42,8 +42,9 @@ def fetch_blurb():
     data = response.json()
     discussions = data["data"]["repository"]["discussions"]["nodes"]
 
+    print("📝 Fetched Discussions:")
     for d in discussions:
-        #if d["category"]["name"] == DISCUSSION_CATEGORY and "🟢" in d["title"]:
+        print(f" - Title: {d['title']} | Category: {d['category']['name']}")
         if d["category"]["name"] == DISCUSSION_CATEGORY:
             with open("blurb.txt", "w") as f:
                 f.write(d["body"])
@@ -57,8 +58,9 @@ def generate_code():
     with open("blurb.txt") as f:
         prompt = f.read()
 
-    openai.api_key = os.environ["OPENAI_API_KEY"]
-    res = openai.ChatCompletion.create(
+    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
+    response = client.chat.completions.create(
         model="gpt-4",
         messages=[
             {"role": "system", "content": "You generate clean and functional code."},
@@ -66,7 +68,9 @@ def generate_code():
         ],
         temperature=0.2
     )
-    code = res["choices"][0]["message"]["content"]
+
+    code = response.choices[0].message.content
+
     os.makedirs("generated", exist_ok=True)
     with open("generated/add.cs", "w") as f:
         f.write(code)
