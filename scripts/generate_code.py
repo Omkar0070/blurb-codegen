@@ -61,7 +61,7 @@ def generate_code():
     client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model="GPT-3.5",
         messages=[
             {"role": "system", "content": "You generate clean and functional code."},
             {"role": "user", "content": prompt}
