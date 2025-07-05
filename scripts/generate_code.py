@@ -1,16 +1,17 @@
-
 import os
 import sys
+import openai
 import requests
-import google.generativeai as genai
 
+# Get repo context from environment variables (injected by GitHub Actions)
 REPO = os.getenv("GITHUB_REPOSITORY")
 OWNER, NAME = REPO.split("/")
-DISCUSSION_CATEGORY = "Blurb"
+DISCUSSION_CATEGORY = "Blurb"  # Must match category name in GitHub Discussions
 
 def fetch_blurb():
     print("🔍 Fetching discussion blurb from GitHub GraphQL...")
 
+    # GitHub GraphQL query to fetch recent discussions
     query = f"""
     {{
       repository(owner: "{OWNER}", name: "{NAME}") {{
@@ -27,10 +28,12 @@ def fetch_blurb():
       }}
     }}
     """
+
     headers = {
         "Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}"
     }
 
+    # Call GitHub GraphQL API
     response = requests.post(
         "https://api.github.com/graphql",
         json={"query": query},
@@ -46,49 +49,75 @@ def fetch_blurb():
     print("📝 Fetched Discussions:")
     for d in discussions:
         print(f" - Title: {d['title']} | Category: {d['category']['name']}")
-        if d["category"]["name"] == DISCUSSION_CATEGORY:
+
+    # Look for first matching discussion in "Blurb" category
+    for d in discussions:
+        if d["category"]["name"].lower() == DISCUSSION_CATEGORY.lower():
             with open("blurb.txt", "w") as f:
                 f.write(d["body"])
             print(f"✅ Found blurb: {d['title']}")
             return
 
-    raise Exception("❌ No matching blurb found.")
+    raise Exception("❌ No matching blurb found in 'Blurb' category.")
 
 def generate_code():
-    print("🧠 Generating code using Gemini...")
+    print("🧠 Generating code using OpenAI GPT...")
+
     with open("blurb.txt") as f:
         prompt = f.read()
 
-    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+    openai.api_key = os.environ["OPENAI_API_KEY"]
 
-    model = genai.GenerativeModel("gemini-pro")
-    response = model.generate_content(prompt)
+    # Call OpenAI ChatCompletion API
+    res = openai.ChatCompletion.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "You generate clean and functional C# code only. No explanations or markdown formatting."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.2
+    )
 
-    code = response.text
+    code = res["choices"][0]["message"]["content"]
+
+    # ✅ Clean output to remove markdown fences and explanations
+    if "```" in code:
+        code = code.split("```")[1]  # get inside code fences
+        lines = code.splitlines()
+        if lines[0].strip().startswith("csharp"):
+            lines = lines[1:]  # skip ```csharp line
+        code = "\n".join(lines)
 
     os.makedirs("generated", exist_ok=True)
     with open("generated/add.cs", "w") as f:
-        f.write(code)
-    print("✅ Code written to generated/add.cs")
+        f.write(code.strip())
+
+    print("✅ Clean C# code written to generated/add.cs")
 
 def compile_code():
     print("⚙️ Compiling generated C# code...")
+
     os.makedirs("project", exist_ok=True)
     os.chdir("project")
     os.system("dotnet new classlib -n CodeGen")
     os.system("mv ../generated/add.cs CodeGen/")
     os.chdir("CodeGen")
-    code = os.system("dotnet build")
-    if code != 0:
+    result = os.system("dotnet build")
+
+    if result != 0:
         raise Exception("❌ Build failed")
     else:
         print("✅ Build succeeded")
 
 if __name__ == "__main__":
     action = sys.argv[1]
+
     if action == "fetch":
         fetch_blurb()
     elif action == "generate":
         generate_code()
     elif action == "compile":
         compile_code()
+    else:
+        print("❌ Unknown action. Use: fetch, generate, or compile.")
+
