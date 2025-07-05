@@ -57,7 +57,6 @@ jobs:
 
     - name: 🔀 Create Pull Request via GitHub CLI
       run: |
-        echo "${{ secrets.GH_PAT }}" | gh auth login --with-token
         gh pr create \
           --title "Codegen PR from Discussion" \
           --body "Add generated code" \
