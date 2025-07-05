@@ -1,31 +1,20 @@
 import os
 import sys
-import shutil
 from openai import OpenAI
 import requests
 
-# Constants
-OPENAI_MODEL = "gpt-4o"
-DISCUSSION_CATEGORY = "Blurb"  # Must match GitHub Discussion category
-GENERATED_DIR = "generated"
-OUTPUT_FILE = os.path.join(GENERATED_DIR, "add.cs")
-PROJECT_DIR = "project"
-CLASSLIB_NAME = "CodeGen"
-
-# Initialize OpenAI client
+# Initialize OpenAI client using environment variable
 client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
-# Get repo context from environment variables (injected by GitHub Actions)
+# Get GitHub repository context
 REPO = os.getenv("GITHUB_REPOSITORY")
 OWNER, NAME = REPO.split("/")
+DISCUSSION_CATEGORY = "Blurb"  # Ensure this matches your Discussion category in GitHub
 
 def fetch_blurb():
-    """
-    Fetches the latest discussion blurb from GitHub Discussions in the specified category
-    and saves it to 'blurb.txt'.
-    """
     print("🔍 Fetching discussion blurb from GitHub GraphQL...")
 
+    # GitHub GraphQL query to fetch recent discussions
     query = f"""
     {{
       repository(owner: "{OWNER}", name: "{NAME}") {{
@@ -47,6 +36,7 @@ def fetch_blurb():
         "Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}"
     }
 
+    # Call GitHub GraphQL API
     response = requests.post(
         "https://api.github.com/graphql",
         json={"query": query},
@@ -56,78 +46,63 @@ def fetch_blurb():
     if response.status_code != 200:
         raise Exception(f"❌ GraphQL query failed: {response.status_code} - {response.text}")
 
-    discussions = response.json()["data"]["repository"]["discussions"]["nodes"]
+    data = response.json()
+    discussions = data["data"]["repository"]["discussions"]["nodes"]
 
     print("📝 Fetched Discussions:")
     for d in discussions:
         print(f" - Title: {d['title']} | Category: {d['category']['name']}")
 
+    # Find first discussion matching 'Blurb' category
     for d in discussions:
         if d["category"]["name"].lower() == DISCUSSION_CATEGORY.lower():
-            with open("blurb.txt", "w", encoding="utf-8") as f:
+            with open("blurb.txt", "w") as f:
                 f.write(d["body"])
             print(f"✅ Found blurb: {d['title']}")
             return
 
-    raise Exception(f"❌ No matching blurb found in '{DISCUSSION_CATEGORY}' category.")
+    raise Exception("❌ No matching blurb found in 'Blurb' category.")
 
 def generate_code():
-    """
-    Generates C# code using OpenAI based on the fetched blurb prompt.
-    Saves clean code to 'generated/add.cs'.
-    """
     print("🧠 Generating code using OpenAI GPT...")
 
-    if not os.path.exists("blurb.txt"):
-        raise FileNotFoundError("❌ blurb.txt not found. Run fetch first.")
-
-    with open("blurb.txt", encoding="utf-8") as f:
+    with open("blurb.txt") as f:
         prompt = f.read()
 
+    # Call OpenAI ChatCompletion API to generate C# code only
     res = client.chat.completions.create(
-        model=OPENAI_MODEL,
+        model="gpt-4o",
         messages=[
-            {
-                "role": "system",
-                "content": "You generate clean and functional C# code only. No explanations or markdown formatting."
-            },
+            {"role": "system", "content": "You generate clean and functional C# code only. No explanations or markdown formatting."},
             {"role": "user", "content": prompt}
         ],
         temperature=0.2
     )
 
-    code = res.choices[0].message.content.strip()
+    code = res.choices[0].message.content
 
-    # ✅ Clean output to remove markdown fences
+    # ✅ Clean output: remove markdown fences and explanation if any
     if "```" in code:
-        parts = code.split("```")
-        code_block = next((p for p in parts if p.strip()), "")
-        lines = code_block.splitlines()
-        if lines and lines[0].strip().startswith("csharp"):
-            lines = lines[1:]
-        code = "\n".join(lines).strip()
+        code = code.split("```")[1]
+        lines = code.splitlines()
+        if lines[0].strip().startswith("csharp"):
+            lines = lines[1:]  # remove ```csharp line
+        code = "\n".join(lines)
 
-    os.makedirs(GENERATED_DIR, exist_ok=True)
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-        f.write(code)
+    os.makedirs("generated", exist_ok=True)
+    with open("generated/add.cs", "w") as f:
+        f.write(code.strip())
 
-    print(f"✅ Clean C# code written to {OUTPUT_FILE}")
+    print("✅ Clean C# code written to generated/add.cs")
 
 def compile_code():
-    """
-    Compiles the generated C# code using dotnet build.
-    """
-    print("⚙️ Compiling generated C# code...")
+    print("⚙️ Compiling generated C# code using dotnet...")
 
-    os.makedirs(PROJECT_DIR, exist_ok=True)
-    os.chdir(PROJECT_DIR)
-    os.system(f"dotnet new classlib -n {CLASSLIB_NAME} --force")
-
-    # Move generated code to project
-    target_path = os.path.join(CLASSLIB_NAME, "add.cs")
-    shutil.move(os.path.join("..", OUTPUT_FILE), target_path)
-
-    os.chdir(CLASSLIB_NAME)
+    os.makedirs("project", exist_ok=True)
+    os.chdir("project")
+    os.system("dotnet new classlib -n CodeGen --force")
+    os.system("mv ../generated/add.cs CodeGen/")
+    os.chdir("CodeGen")
     result = os.system("dotnet build")
 
     if result != 0:
@@ -136,11 +111,7 @@ def compile_code():
         print("✅ Build succeeded")
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("❌ No action provided. Use: fetch, generate, or compile.")
-        sys.exit(1)
-
-    action = sys.argv[1].lower()
+    action = sys.argv[1]
 
     if action == "fetch":
         fetch_blurb()
