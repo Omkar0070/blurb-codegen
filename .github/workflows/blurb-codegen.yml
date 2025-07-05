@@ -3,6 +3,10 @@ name: Blurb → Code → Compile → PR
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   blurb-pipeline:
     runs-on: ubuntu-latest
