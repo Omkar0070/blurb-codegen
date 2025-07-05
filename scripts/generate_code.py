@@ -12,9 +12,12 @@ OWNER, NAME = REPO.split("/")
 DISCUSSION_CATEGORY = "Blurb"  # Must match category name in GitHub Discussions
 
 def fetch_blurb():
+    """
+    Fetches the latest discussion blurb from GitHub Discussions in the specified category
+    and saves it to 'blurb.txt'.
+    """
     print("🔍 Fetching discussion blurb from GitHub GraphQL...")
 
-    # GitHub GraphQL query to fetch recent discussions
     query = f"""
     {{
       repository(owner: "{OWNER}", name: "{NAME}") {{
@@ -36,7 +39,6 @@ def fetch_blurb():
         "Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}"
     }
 
-    # Call GitHub GraphQL API
     response = requests.post(
         "https://api.github.com/graphql",
         json={"query": query},
@@ -53,49 +55,65 @@ def fetch_blurb():
     for d in discussions:
         print(f" - Title: {d['title']} | Category: {d['category']['name']}")
 
-    # Look for first matching discussion in "Blurb" category
+    # Look for first matching discussion in the specified category
     for d in discussions:
         if d["category"]["name"].lower() == DISCUSSION_CATEGORY.lower():
-            with open("blurb.txt", "w") as f:
+            with open("blurb.txt", "w", encoding="utf-8") as f:
                 f.write(d["body"])
             print(f"✅ Found blurb: {d['title']}")
             return
 
-    raise Exception("❌ No matching blurb found in 'Blurb' category.")
+    raise Exception(f"❌ No matching blurb found in '{DISCUSSION_CATEGORY}' category.")
 
 def generate_code():
+    """
+    Generates C# code using OpenAI based on the fetched blurb prompt.
+    Saves clean code to 'generated/add.cs'.
+    """
     print("🧠 Generating code using OpenAI GPT...")
 
-    with open("blurb.txt") as f:
+    if not os.path.exists("blurb.txt"):
+        raise FileNotFoundError("❌ blurb.txt not found. Run fetch first.")
+
+    with open("blurb.txt", encoding="utf-8") as f:
         prompt = f.read()
 
-    # Call OpenAI ChatCompletion API (v1.x syntax)
     res = client.chat.completions.create(
         model="gpt-4o",
         messages=[
-            {"role": "system", "content": "You generate clean and functional C# code only. No explanations or markdown formatting."},
+            {
+                "role": "system",
+                "content": (
+                    "You generate clean and functional C# code only. "
+                    "No explanations or markdown formatting."
+                )
+            },
             {"role": "user", "content": prompt}
         ],
         temperature=0.2
     )
 
-    code = res.choices[0].message.content
+    code = res.choices[0].message.content.strip()
 
-    # ✅ Clean output to remove markdown fences and explanations
+    # ✅ Clean output to remove markdown fences if present
     if "```" in code:
-        code = code.split("```")[1]  # get inside code fences
+        parts = code.split("```")
+        code = parts[1] if len(parts) > 1 else parts[0]
         lines = code.splitlines()
-        if lines[0].strip().startswith("csharp"):
+        if lines and lines[0].strip().startswith("csharp"):
             lines = lines[1:]  # skip ```csharp line
-        code = "\n".join(lines)
+        code = "\n".join(lines).strip()
 
     os.makedirs("generated", exist_ok=True)
-    with open("generated/add.cs", "w") as f:
-        f.write(code.strip())
+    with open("generated/add.cs", "w", encoding="utf-8") as f:
+        f.write(code)
 
     print("✅ Clean C# code written to generated/add.cs")
 
 def compile_code():
+    """
+    Compiles the generated C# code using dotnet build.
+    """
     print("⚙️ Compiling generated C# code...")
 
     os.makedirs("project", exist_ok=True)
@@ -111,7 +129,11 @@ def compile_code():
         print("✅ Build succeeded")
 
 if __name__ == "__main__":
-    action = sys.argv[1]
+    if len(sys.argv) < 2:
+        print("❌ No action provided. Use: fetch, generate, or compile.")
+        sys.exit(1)
+
+    action = sys.argv[1].lower()
 
     if action == "fetch":
         fetch_blurb()
