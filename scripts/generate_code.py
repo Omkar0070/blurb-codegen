@@ -1,7 +1,10 @@
 import os
 import sys
-import openai
+from openai import OpenAI
 import requests
+
+# Initialize OpenAI client
+client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
 # Get repo context from environment variables (injected by GitHub Actions)
 REPO = os.getenv("GITHUB_REPOSITORY")
@@ -66,10 +69,8 @@ def generate_code():
     with open("blurb.txt") as f:
         prompt = f.read()
 
-    openai.api_key = os.environ["OPENAI_API_KEY"]
-
-    # Call OpenAI ChatCompletion API
-    res = openai.ChatCompletion.create(
+    # Call OpenAI ChatCompletion API (v1.x syntax)
+    res = client.chat.completions.create(
         model="gpt-4o",
         messages=[
             {"role": "system", "content": "You generate clean and functional C# code only. No explanations or markdown formatting."},
@@ -78,7 +79,7 @@ def generate_code():
         temperature=0.2
     )
 
-    code = res["choices"][0]["message"]["content"]
+    code = res.choices[0].message.content
 
     # ✅ Clean output to remove markdown fences and explanations
     if "```" in code:
@@ -99,7 +100,7 @@ def compile_code():
 
     os.makedirs("project", exist_ok=True)
     os.chdir("project")
-    os.system("dotnet new classlib -n CodeGen")
+    os.system("dotnet new classlib -n CodeGen --force")
     os.system("mv ../generated/add.cs CodeGen/")
     os.chdir("CodeGen")
     result = os.system("dotnet build")
@@ -120,4 +121,3 @@ if __name__ == "__main__":
         compile_code()
     else:
         print("❌ Unknown action. Use: fetch, generate, or compile.")
-
