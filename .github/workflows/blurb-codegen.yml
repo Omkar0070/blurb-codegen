@@ -41,24 +41,26 @@ jobs:
         python scripts/generate_code.py compile
 
     - name: 📝 Commit and push generated code to new branch
-      id: commit-and-push   # Assigns an identifier to this step
+      id: commit-and-push
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
         BRANCH="feature/generated-$(date +%s)"
         git checkout -b "$BRANCH"
         git add .
-        git commit -m "🤖 Generated code from LLM"
+        git commit -m "🤖 Generated code from LLM" || echo "No changes to commit"
         git push origin "$BRANCH"
-        # Sets an output variable 'branch' for use in later steps
         echo "branch=$BRANCH" >> $GITHUB_OUTPUT
 
-    - name: 🔀 Create Pull Request
-      uses: peter-evans/create-pull-request@v5
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        title: "Codegen PR from Discussion"
-        commit-message: "Add generated code"
-        base: main
-        # Retrieves the 'branch' output from the commit-and-push step
-        branch: ${{ steps.commit-and-push.outputs.branch }}
+    - name: 🛠️ Install GitHub CLI
+      run: sudo apt install gh
+
+    - name: 🔀 Create Pull Request via GitHub CLI
+      run: |
+        gh pr create \
+          --title "Codegen PR from Discussion" \
+          --body "Add generated code" \
+          --base main \
+          --head ${{ steps.commit-and-push.outputs.branch }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
