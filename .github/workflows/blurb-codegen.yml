@@ -41,6 +41,7 @@ jobs:
         python scripts/generate_code.py compile
 
     - name: 📝 Commit and push generated code to new branch
+      id: commit-and-push
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -49,6 +50,7 @@ jobs:
         git add .
         git commit -m "🤖 Generated code from LLM"
         git push origin "$BRANCH"
+        echo "branch=$BRANCH" >> $GITHUB_OUTPUT
 
     - name: 🔀 Create Pull Request
       uses: peter-evans/create-pull-request@v5
