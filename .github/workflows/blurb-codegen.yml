@@ -1,6 +1,8 @@
 name: Blurb → Code → Compile → PR
 
 on:
+  schedule:
+    - cron: '*/5 * * * *'  # Runs every 5 minutes
   workflow_dispatch:
 
 permissions:
@@ -15,56 +17,67 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_PAT: ${{ secrets.GH_PAT }}
-      OWNER:  Omkar0070
-      REPO:  blurb-codegen
-      CATEGORY_NAME: Blurb
+      OWNER: Omkar0070            
+      REPO: blurb-codegen             
+      CATEGORY_NAME: Blurb             
 
     steps:
-    - name: 🛒 Checkout repository
-      uses: actions/checkout@v4
+      - name: 🛒 Checkout repository
+        uses: actions/checkout@v4
 
-    - name: 🐍 Setup Python 3.11
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
+      - name: 🐍 Setup Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-    - name: ⚙️ Setup .NET SDK 8.0
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '8.0.x'
+      - name: ⚙️ Setup .NET SDK 8.0
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
 
-    - name: 📦 Install Python dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install openai requests
+      - name: 📦 Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install openai requests
 
-    - name: 🚀 Run blurb pipeline
-      run: |
-        python scripts/generate_code.py fetch
-        python scripts/generate_code.py generate
-        python scripts/generate_code.py compile
+      - name: 🕵️ Poll for new discussions
+        id: poll
+        run: |
+          python scripts/poll_discussions.py
+          echo "NEW_BLURB=$(cat new_blurb_flag.txt)" >> $GITHUB_ENV
 
-    - name: 📝 Commit and push generated code to new branch
-      id: commit-and-push
-      run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-        BRANCH="feature/generated-$(date +%s)"
-        git checkout -b "$BRANCH"
-        git add .
-        git commit -m "🤖 Generated code from LLM" || echo "No changes to commit"
-        git push origin "$BRANCH"
-        echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+      - name: 🚀 Run blurb pipeline
+        if: env.NEW_BLURB == 'true'
+        run: |
+          python scripts/generate_code.py fetch
+          python scripts/generate_code.py generate
+          python scripts/generate_code.py compile
 
-    - name: 🛠️ Install GitHub CLI
-      run: sudo apt install gh -y
+      - name: 📝 Commit and push generated code to new branch
+        if: env.NEW_BLURB == 'true'
+        id: commit-and-push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          BRANCH="feature/generated-$(date +%s)"
+          git checkout -b "$BRANCH"
+          git add .
+          git commit -m "🤖 Generated code from LLM" || echo "No changes to commit"
+          git push origin "$BRANCH"
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
 
-    - name: 🔀 Create Pull Request via GitHub CLI
-      run: |
-        gh pr create \
-          --title "Codegen PR from Discussion" \
-          --body "Add generated code" \
-          --base main \
-          --head ${{ steps.commit-and-push.outputs.branch }}
-      env:
-        GH_TOKEN: ${{ secrets.GH_PAT }}
+      - name: 🛠️ Install GitHub CLI
+        if: env.NEW_BLURB == 'true'
+        run: sudo apt install gh -y
+
+      - name: 🔀 Create Pull Request via GitHub CLI
+        if: env.NEW_BLURB == 'true'
+        run: |
+          gh auth setup-git
+          gh pr create \
+            --title "Codegen PR from Discussion" \
+            --body "Add generated code" \
+            --base main \
+            --head ${{ steps.commit-and-push.outputs.branch }}
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
