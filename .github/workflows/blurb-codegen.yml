@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
@@ -26,9 +26,7 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install google-generativeai requests
+        run: pip install openai requests
 
       - name: Run blurb pipeline
         run: |
@@ -43,7 +41,7 @@ jobs:
           BRANCH=feature/generated-$(date +%s)
           git checkout -b $BRANCH
           git add .
-          git commit -m "Generated code from Gemini LLM"
+          git commit -m "Generated code from LLM"
           git push origin $BRANCH
 
       - name: Create Pull Request
@@ -53,3 +51,4 @@ jobs:
           title: "Codegen PR from Discussion"
           commit-message: "Add generated code"
           base: main
+
