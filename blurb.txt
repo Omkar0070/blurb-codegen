@@ -1,0 +1,1 @@
+Please generate a C# file named add.cs that defines a static method Add in a class Calculator.   It should accept two integers and return their sum
