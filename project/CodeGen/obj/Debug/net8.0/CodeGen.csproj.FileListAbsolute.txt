@@ -1,0 +1,12 @@
+/home/runner/work/blurb-codegen/blurb-codegen/project/CodeGen/bin/Debug/net8.0/CodeGen.deps.json
+/home/runner/work/blurb-codegen/blurb-codegen/project/CodeGen/bin/Debug/net8.0/CodeGen.dll
+/home/runner/work/blurb-codegen/blurb-codegen/project/CodeGen/bin/Debug/net8.0/CodeGen.pdb
+/home/runner/work/blurb-codegen/blurb-codegen/project/CodeGen/obj/Debug/net8.0/CodeGen.GeneratedMSBuildEditorConfig.editorconfig
+/home/runner/work/blurb-codegen/blurb-codegen/project/CodeGen/obj/Debug/net8.0/CodeGen.AssemblyInfoInputs.cache
+/home/runner/work/blurb-codegen/blurb-codegen/project/CodeGen/obj/Debug/net8.0/CodeGen.AssemblyInfo.cs
+/home/runner/work/blurb-codegen/blurb-codegen/project/CodeGen/obj/Debug/net8.0/CodeGen.csproj.CoreCompileInputs.cache
+/home/runner/work/blurb-codegen/blurb-codegen/project/CodeGen/obj/Debug/net8.0/CodeGen.sourcelink.json
+/home/runner/work/blurb-codegen/blurb-codegen/project/CodeGen/obj/Debug/net8.0/CodeGen.dll
+/home/runner/work/blurb-codegen/blurb-codegen/project/CodeGen/obj/Debug/net8.0/refint/CodeGen.dll
+/home/runner/work/blurb-codegen/blurb-codegen/project/CodeGen/obj/Debug/net8.0/CodeGen.pdb
+/home/runner/work/blurb-codegen/blurb-codegen/project/CodeGen/obj/Debug/net8.0/ref/CodeGen.dll
