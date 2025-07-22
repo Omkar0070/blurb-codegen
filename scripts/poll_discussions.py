@@ -17,7 +17,7 @@ headers = {
 resp = requests.get(url, headers=headers)
 if resp.status_code != 200:
     print(f"❌ Failed to fetch discussions: {resp.status_code}")
-    open("blurb.txt", "w").write("false")
+    open("new_blurb_flag.txt", "w").write("false")
     exit(0)
 
 data = resp.json()
@@ -27,7 +27,7 @@ latest = next((d for d in data if d["category"]["name"].lower() == CATEGORY.lowe
 
 if not latest:
     print(f"⚠️ No discussion found in category '{CATEGORY}'")
-    open("blurb.txt", "w").write("false")
+    open("new_blurb_flag.txt", "w").write("false")
     exit(0)
 
 print(f"🆕 Latest discussion found: {latest['title']} (#{latest['number']})")
@@ -45,7 +45,7 @@ if latest["number"] > last_id:
         f.write(latest["body"])
     with open(".last-discussion-id", "w") as f:
         f.write(str(latest["number"]))
-    open("blurb.txt", "w").write("true")
+    open("new_blurb_flag.txt", "w").write("true")
 else:
     print("📭 No new discussion detected.")
-    open("blurb.txt", "w").write("false")
+    open("new_blurb_flag.txt", "w").write("false")
